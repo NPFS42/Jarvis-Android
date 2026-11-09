@@ -7,13 +7,14 @@
 - Android package ID: `net.sovereignresearch.jarvis`. **Treat as permanent after the first Play upload.**
 - Target API 36, min API 29 (Android 10+), first version code 1 and version 0.1.0.
 - Android release build, unit tests and Android Lint passed on Windows JDK 21.
-- Owner's first RSA-4096 upload keystore created in the **private backend runtime directory**, protected at rest with Windows DPAPI. The upload certificate's SHA-256 fingerprint is recorded in private acceptance notes, not the public repo.
-- A signed `.aab` and signed `.apk` exist in the owner's ignored private runtime folder. **An upload key is NOT the app-signing key managed by Google Play.**
+- **Requested release identity:** the existing Kinetic Torch / NPFS upload certificate, SHA-256 `7C:46:5F:47:14:1B:69:5D:0D:5D:E3:64:85:40:9F:D0:55:EA:92:A7:F1:8C:04:EE:95:F7:DB:2F:A4:75:FA:F2`, verified against Kinetic Torch's signed release bundle on the authorized shop PC.
+- **NPFS signing is pending:** the existing keystore must be used by its owner on a trusted machine; the unsigned Jarvis release AAB and APK have been built and tested. An earlier locally signed **STARS** Jarvis bundle is a different certificate and must **not** be submitted or described as NPFS-signed.
+- Signing credentials and the original keystore remain outside this public GitHub repository. **An upload key is NOT the app-signing key managed by Google Play.**
 - Release build has an empty bootstrap hostname. No personal tailnet host, Tailscale credentials, keys, models or conversations are packaged.
 
 ## Build another signed bundle
 
-On the owner's trusted development machine, provide local environment variables `JARVIS_UPLOAD_KEYSTORE` (absolute file path to private PKCS12) and `JARVIS_UPLOAD_PASSWORD` via a secure local secret provider; do not print, echo, write to source, or store them in GitHub Actions without separate security review.
+On the owner's trusted development machine, provide the **same existing NPFS/Kinetic Torch signing environment** used by that project: `KINETIC_KEYSTORE_PATH`, `KINETIC_KEYSTORE_PASSWORD`, `KINETIC_KEY_ALIAS`, and `KINETIC_KEY_PASSWORD`. Use a secure local credential source. Do not print, paste into chat, or commit these values, and do not generate a new key. Verify the resulting signing certificate against the fingerprint above.
 
 ```powershell
 ./gradlew.bat :app:testReleaseUnitTest :app:lintVitalRelease :app:bundleRelease

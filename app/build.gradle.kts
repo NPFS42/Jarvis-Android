@@ -28,14 +28,22 @@ android {
     // Google Play builds never contain a private tailnet hostname.
     // Only the personal debug APK may use a local.properties bootstrap.
     signingConfigs {
-        if (System.getenv("JARVIS_UPLOAD_KEYSTORE") != null &&
-            System.getenv("JARVIS_UPLOAD_PASSWORD") != null) {
-            create("upload") {
-                storeFile = File(System.getenv("JARVIS_UPLOAD_KEYSTORE"))
-                storePassword = System.getenv("JARVIS_UPLOAD_PASSWORD")
-                keyAlias = "jarvis-upload"
-                keyPassword = System.getenv("JARVIS_UPLOAD_PASSWORD")
-                storeType = "PKCS12"
+        // Reuse NPFS's existing Kinetic Torch release/upload identity.
+        // This environment interface is identical to the Kinetic Torch project.
+        // No credentials, keystores or passwords are stored in this repository.
+        val npfsKeyPath = System.getenv("KINETIC_KEYSTORE_PATH")
+        if (!npfsKeyPath.isNullOrBlank()) {
+            create("npfs") {
+                storeFile = File(npfsKeyPath)
+                storePassword = requireNotNull(System.getenv("KINETIC_KEYSTORE_PASSWORD")) {
+                    "KINETIC_KEYSTORE_PASSWORD is required for NPFS release signing"
+                }
+                keyAlias = requireNotNull(System.getenv("KINETIC_KEY_ALIAS")) {
+                    "KINETIC_KEY_ALIAS is required for NPFS release signing"
+                }
+                keyPassword = requireNotNull(System.getenv("KINETIC_KEY_PASSWORD")) {
+                    "KINETIC_KEY_PASSWORD is required for NPFS release signing"
+                }
             }
         }
     }
@@ -47,8 +55,9 @@ android {
             isMinifyEnabled = false
             isDebuggable = false
             buildConfigField("String", "DEFAULT_HOST", "\"\"")
-            if (signingConfigs.findByName("upload") != null)
-                signingConfig = signingConfigs.getByName("upload")
+            // Without the existing NPFS keystore, Gradle produces an unsigned
+            // release. Never silently substitute a different signing identity.
+            signingConfig = signingConfigs.findByName("npfs")
         }
     }
     buildFeatures { buildConfig = true }
