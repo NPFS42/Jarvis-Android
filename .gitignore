@@ -13,3 +13,4 @@ local.properties
 *.env
 *.password
 captures/
+play-assets/screenshots/*.xml

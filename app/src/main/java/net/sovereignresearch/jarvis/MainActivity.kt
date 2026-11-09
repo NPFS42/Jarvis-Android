@@ -1,6 +1,7 @@
 package net.sovereignresearch.jarvis
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -125,6 +126,9 @@ class MainActivity : Activity() {
                 status.text = "No browser is available to open the privacy policy."
             }
         })
+        // A real, offline-readable setup guide also gives app reviewers an
+        // honest explanation without exposing the owner's private Jarvis server.
+        layout.addView(button("Connection guide") { showConnectionGuide() })
 
         nodes = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         layout.addView(nodes)
@@ -154,6 +158,23 @@ class MainActivity : Activity() {
                 insets
             }
         }
+    }
+
+    private fun showConnectionGuide() {
+        AlertDialog.Builder(this)
+            .setTitle("Connect to Jarvis privately")
+            .setMessage(
+                "1. Install Tailscale on your Android device. Sign in to the " +
+                "same authorized tailnet as your Jarvis server.\n\n" +
+                "2. Start your separately installed private Jarvis coordinator " +
+                "and enable its tailnet-only HTTPS service.\n\n" +
+                "3. Return here and enter your server's Tailscale MagicDNS " +
+                "hostname. Verify and save it to discover your Jarvis nodes.\n\n" +
+                "Only authorized tailnet HTTPS endpoints are accepted. " +
+                "This application has no public AI service or built-in model."
+            )
+            .setPositiveButton("Got it", null)
+            .show()
     }
 
     override fun onResume() {
