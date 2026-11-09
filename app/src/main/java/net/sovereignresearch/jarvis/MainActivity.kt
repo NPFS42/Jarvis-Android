@@ -1,10 +1,13 @@
 package net.sovereignresearch.jarvis
 
 import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.Context
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.net.ConnectivityManager
+import android.net.Uri
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.os.Build
@@ -111,6 +114,17 @@ class MainActivity : Activity() {
         layout.addView(button("Verify and save this node") { addNode() })
         layout.addView(label("Only verified Jarvis hosts in your connected Tailscale VPN are accepted. " +
             "No public websites, LAN addresses, IP shortcuts, or cloud fallback.", 13f, muted))
+        // Google Play requires a privacy-policy link inside the application.
+        // It opens the user's separate browser on deliberate tap only; Jarvis
+        // discovery and the embedded Jarvis WebView remain tailnet-only.
+        layout.addView(button("Privacy policy (opens browser)") {
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW,
+                    Uri.parse("https://github.com/NPFS42/Jarvis-Android/blob/main/PRIVACY.md")))
+            } catch (_: ActivityNotFoundException) {
+                status.text = "No browser is available to open the privacy policy."
+            }
+        })
 
         nodes = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         layout.addView(nodes)

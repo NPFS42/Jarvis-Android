@@ -47,6 +47,6 @@ Output: `app/build/outputs/bundle/release/app-release.aab`. Verify bundle signin
 > Requires your own compatible Jarvis server and a separately installed, connected Tailscale application. The app itself does not include an AI model, cloud inference service or Tailscale subscription. Features are determined by your private Jarvis installation.
 
 **Category:** Tools or Productivity (choose after product review).
-**Support email:** Pending verification.
-**Website:** Public repository is available; product website not yet verified.
+**Support email:** npfsoregon@gmail.com (the existing NPFS LLC Kinetic Torch Play listing contact).
+**Website:** https://sovereignresearch.net/ (existing NPFS LLC Kinetic Torch Play listing website).
 **Privacy URL:** https://github.com/NPFS42/Jarvis-Android/blob/main/PRIVACY.md (verify live after push).

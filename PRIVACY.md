@@ -1,7 +1,8 @@
 # Privacy Policy — Jarvis for Android
 
-**Effective:** November 8, 2026
-**Publisher:** STARS LLC / Sovereign Technical and Research Solutions
+**Effective:** November 9, 2026
+**Google Play developer account:** NPFS LLC
+**Application developer:** STARS LLC / Sovereign Technical and Research Solutions
 **Application:** Jarvis for Android (`net.sovereignresearch.jarvis`)
 
 Jarvis for Android is an interface to a separate, self-hosted Jarvis instance, accessible only through the device's Tailscale VPN. This Android frontend does not offer an OpenAI-hosted or STARS-hosted public AI service.
@@ -20,6 +21,6 @@ Jarvis for Android is an interface to a separate, self-hosted Jarvis instance, a
 
 **Changes.** Material changes to these privacy practices will be reflected in this page and versioned with the app.
 
-**Contact:** The publisher should provide and verify a monitored support/contact email address before submitting this app to Google Play. No email address is supplied in this source repository because one has not been verified for this listing.
+**Contact:** NPFS LLC provides support through **npfsoregon@gmail.com**, the business contact already used for its S.T.A.R.S. Kinetic Torch app in Google Play Console. Publisher website: **https://sovereignresearch.net/**. The privacy policy is linked from the Jarvis Android app and its Google Play store listing.
 
 **Scope:** This policy describes only the Android frontend. Individual self-hosted Jarvis servers may have additional policies.
