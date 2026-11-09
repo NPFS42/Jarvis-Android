@@ -2,6 +2,15 @@
 
 **Repository:** Public frontend code only. The parent Jarvis coordinator is private and is not distributed by this Android application.
 
+## Live Google Play Console status — November 9, 2026
+
+The **NPFS LLC** Play Console app draft **Jarvis Tailnet** exists at:
+https://play.google.com/console/u/0/developers/7720069378457039794/app/4976343341847982841/app-dashboard
+
+Completed in the Play draft: privacy policy URL, No ads, non-government app, Productivity category, business contact and website, English store listing (name, descriptions, icon, feature graphic), and two **genuine Android emulator screenshots**. The Play Console dashboard shows **5 of 11 app-information tasks completed**. The two screenshots show offline onboarding and its connection-guide dialog; they are not falsely represented as a working live Jarvis server.
+
+The draft is **not submitted, in testing, or production-published**. Play reviewer access is a blocker: the client requires a private Tailscale network and no separate synthetic test environment or reviewer credentials are yet configured. See [PLAY_REVIEW_ACCESS.md](PLAY_REVIEW_ACCESS.md). Data safety, target age groups, IARC ratings, health/financial declarations, physical-phone/Tailscale tests, and final NPFS release signing remain pending.
+
 ## Status — completed
 
 - Android package ID: `net.sovereignresearch.jarvis`. **Treat as permanent after the first Play upload.**

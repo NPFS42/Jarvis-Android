@@ -32,4 +32,4 @@ The current implementation is a **pre-release frontend**: a successfully signed 
 
 ## Status
 
-Android unit tests and locally signed bundle have passed. Play Console app registration, final listing, Data safety questionnaire, production signing enrollment, screenshot capture and pre-release testing are separate publication gates. The local project repo remains private.
+Android unit tests and CI builds have passed. The **NPFS LLC Google Play app draft** is created, and the Play Console listing, branding, privacy link and **two real Android emulator screenshots** are saved. The Google Play release is **not yet published**. The signed Play release bundle must still use the verified original NPFS/Kinetic Torch certificate (a prior locally signed STARS bundle is not the selected release identity). Outstanding gates include reusable **isolated reviewer access** to a test Jarvis node, Data safety and other declarations, physical Android/Tailscale acceptance testing, and release signing. See [PLAY_PUBLISHING.md](PLAY_PUBLISHING.md), [PLAY_REVIEW_ACCESS.md](PLAY_REVIEW_ACCESS.md), and [NPFS_SIGNING.md](NPFS_SIGNING.md). The main Jarvis AI repository remains private.
