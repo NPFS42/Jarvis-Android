@@ -13,7 +13,7 @@ import javax.net.ssl.HttpsURLConnection
  * HTTPS certificate and hostname verification are Android's strict defaults.
  */
 class TailnetClient(private val connectivity: ConnectivityManager) {
-    data class Node(val host: String, val version: String)
+    data class Node(val host: String, val version: String, val address: String? = null)
 
     fun activeVpn(): Network? {
         val network = connectivity.activeNetwork ?: return null

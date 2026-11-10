@@ -8,13 +8,13 @@
 
 ## Download (preview)
 
-**Latest NPFS-signed Android APK — v0.1.1:** [Download directly](downloads/JarvisTailnet-v0.1.1-npfs-release.apk). The Jarvis backend is **not** included. For reviewer access to the synthetic demo, see the permanent [NPFS42 Demo Access page](DEMO_ACCESS.md). The invitation is published on that page and can be rotated without rebuilding the APK.
+**Latest NPFS-signed Android APK — v0.1.2:** [Download directly](downloads/JarvisTailnet-v0.1.2-npfs-release.apk). The Jarvis backend is **not** included. For reviewer access to the synthetic demo, see the permanent [NPFS42 Demo Access page](DEMO_ACCESS.md). The invitation is published on that page and can be rotated without rebuilding the APK.
 
-The app's **Explore demo** button opens a connection-help dialog if the isolated demo cannot be reached, with a direct link to that page. **Search for Jarvis** presents a selectable list of independently verified nodes; selecting an item fills the editable hostname field and does not connect automatically.
+The app's **Explore demo** button opens a connection-help dialog if the isolated demo cannot be reached, with a direct link to that page. **Search Tailscale IPs for Jarvis** now checks peer-specific Android VPN routes and accepts a list of Tailscale IPs or a bounded /24–/32 range to scan. It uses VPN-bound TCP probing, reverse MagicDNS and strict HTTPS service identity checks; verified real Jarvis nodes appear in a selectable list. Tapping one fills the hostname field without connecting. See [IP discovery details and limits](TAILNET_IP_DISCOVERY.md).
 
 ## Features
 
-A native, minimal Android frontend for a Jarvis node running behind **Tailscale Serve**. It requires a connected VPN, exact `node.tailnet.ts.net` hostname, addresses within Tailscale ranges, normal TLS certificate verification and Jarvis's identity response. It neither scans local LANs nor uses public internet fallbacks. It requests same-tailnet peer suggestions only from an already-verified node, verifying all discovered endpoints independently. The approved node's existing full Jarvis UI loads within a restricted Android WebView. No Jarvis backend logic executes on the phone.
+A native, minimal Android frontend for a Jarvis node running behind **Tailscale Serve**. It requires a connected VPN, exact `node.tailnet.ts.net` hostname, addresses within Tailscale ranges, normal TLS certificate verification and Jarvis's identity response. It neither scans local LANs nor uses public internet fallbacks. It can discover verified real Jarvis nodes from saved MagicDNS names, independently verified peer hints and bounded user-initiated Tailscale IP scans. The phone cannot enumerate Tailscale's full 4-million-address range without an authorized peer-list source; a /24 or smaller range is supported. The approved node's existing full Jarvis UI loads within a restricted Android WebView. No Jarvis backend logic executes on the phone.
 
 The user's **Tailscale app and a private Jarvis server** are required to use real Jarvis functionality; the optional review demo uses only fictional sample data behind a separate Tailscale machine-share invitation. The Android app does not log in to Tailscale, create a VPN, or expose a public cloud Jarvis backend.
 

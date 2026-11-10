@@ -50,6 +50,7 @@ class MainActivity : Activity() {
     private val accent = Color.rgb(89, 218, 207)
     private lateinit var connectivity: ConnectivityManager
     private lateinit var finder: TailnetClient
+    private lateinit var ipScanner: TailnetIpScanner
     private lateinit var layout: LinearLayout
     private lateinit var status: TextView
     private lateinit var nodes: LinearLayout
@@ -92,6 +93,7 @@ class MainActivity : Activity() {
         window.navigationBarColor = appBackground
         connectivity = getSystemService(ConnectivityManager::class.java)
         finder = TailnetClient(connectivity)
+        ipScanner = TailnetIpScanner(connectivity, finder)
         // Android 13+ and target SDK 36 use the system back dispatcher.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val callback = OnBackInvokedCallback {
@@ -121,8 +123,10 @@ class MainActivity : Activity() {
         layout.addView(button("Explore demo · simulated Jarvis") { connectDemo() })
         layout.addView(label("NPFS42 synthetic demo · Tailscale access required. " +
             "Tap Demo for connection details if it is not available.", 12f, muted))
-        layout.addView(button("Search for Jarvis on my tailnet") { scan(showPicker = true) })
+        layout.addView(button("Search Tailscale IPs for Jarvis") { showIpScanDialog() })
 
+        layout.addView(label("Verified servers use a MagicDNS hostname for HTTPS. " +
+            "IP search can find their names via Tailscale reverse DNS.", 12f, muted))
         layout.addView(label("Add a known Jarvis node (MagicDNS only)", 14f, muted))
         candidateField = EditText(this).apply {
             hint = "node.tailnet.ts.net"
@@ -134,8 +138,9 @@ class MainActivity : Activity() {
         }
         layout.addView(candidateField)
         layout.addView(button("Verify and save this node") { addNode() })
-        layout.addView(label("Only verified Jarvis hosts in your connected Tailscale VPN are accepted. " +
-            "No public websites, LAN addresses, IP shortcuts, or cloud fallback.", 13f, muted))
+        layout.addView(label("Only verified FULL Jarvis identities over VPN HTTPS are accepted. " +
+            "IP scans find hostnames; actual connections require verified MagicDNS and TLS. " +
+            "No public/LAN addresses or cloud fallback.", 13f, muted))
         // Google Play requires a privacy-policy link inside the application.
         // It opens the user's separate browser on deliberate tap only; Jarvis
         // discovery and the embedded Jarvis WebView remain tailnet-only.
@@ -313,7 +318,73 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun scan(showPicker: Boolean = false) {
+    private fun showIpScanDialog() {
+        val vpn = finder.activeVpn()
+        if (vpn == null) {
+            checkVpn()
+            AlertDialog.Builder(this)
+                .setTitle("Search requires Tailscale")
+                .setMessage("Connect your Tailscale VPN before searching for Jarvis servers.")
+                .setPositiveButton("Open Tailscale") { _, _ -> openTailscale() }
+                .setNegativeButton("Close", null).show()
+            return
+        }
+        val routed = ipScanner.routedPeerIps(vpn)
+        val input = EditText(this).apply {
+            hint = "100.83.63.88 or 100.83.63.0/24"
+            setSingleLine(false)
+            minLines = 2
+            maxLines = 4
+            setTextColor(ink)
+            setHintTextColor(muted)
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or
+                android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
+            setPadding(dp(16), dp(12), dp(16), dp(12))
+        }
+        val message = if (routed.isNotEmpty()) {
+            "Android exposes ${routed.size} peer-specific Tailscale route(s). " +
+                "These will be scanned automatically. You can add more Tailscale " +
+                "IPs or a CIDR from /24 through /32 below."
+        } else {
+            "Android does not expose a complete list of Tailscale peer IPs. " +
+                "Enter a Tailscale IP, paste a list, or specify a small /24–/32 range. " +
+                "Without one, the app can only verify saved Jarvis hosts. " +
+                "The entire 100.64.0.0/10 network is too large to scan."
+        }
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(8), dp(16), dp(4))
+            addView(label(message, 14f, ink))
+            addView(input)
+            addView(label("Max 256 addresses · HTTPS port 443 · Tailscale VPN only. " +
+                "The separate synthetic demo is excluded from real Jarvis results.", 12f, muted))
+        }
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Discover Jarvis by Tailscale IP")
+            .setView(content)
+            .setPositiveButton("Scan", null)
+            .setNegativeButton("Cancel", null)
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val candidates = try {
+                    TailnetIpRanges.mergeRoutedAndEntered(routed, input.text.toString())
+                } catch (e: IllegalArgumentException) {
+                    input.error = e.message ?: "Enter a valid Tailscale IP or /24–/32 range."
+                    return@setOnClickListener
+                }
+                if (candidates.isEmpty() && saved().isEmpty()) {
+                    input.error = "No peer-specific routes found. Enter a Tailscale IP or /24 range."
+                    return@setOnClickListener
+                }
+                dialog.dismiss()
+                scan(showPicker = true, ipTargets = candidates)
+            }
+        }
+        dialog.show()
+    }
+
+    private fun scan(showPicker: Boolean = false, ipTargets: List<String> = emptyList()) {
         if (webView != null) return
         val vpn = finder.activeVpn()
         if (vpn == null) {
@@ -326,10 +397,10 @@ class MainActivity : Activity() {
             return
         }
         val id = generation.incrementAndGet()
-        status.text = "Tailscale connected · Checking trusted Jarvis nodes…"
+        status.text = "Tailscale connected · Checking trusted hosts and available IP targets…"
         nodes.removeAllViews()
         val hosts = saved().sorted()
-        if (hosts.isEmpty()) {
+        if (hosts.isEmpty() && ipTargets.isEmpty()) {
             status.text = "No known Jarvis nodes yet. Enter a MagicDNS hostname and verify it first."
             if (showPicker) AlertDialog.Builder(this)
                 .setTitle("No known Jarvis nodes")
@@ -343,7 +414,7 @@ class MainActivity : Activity() {
             searchProgress?.dismiss()
             searchProgress = AlertDialog.Builder(this)
                 .setTitle("Searching for Jarvis…")
-                .setMessage("Checking your known nodes and verifying their HTTPS Jarvis identities.")
+                .setMessage("Probing ${ipTargets.size} Tailscale IP(s) and saved hosts. Only authenticated FULL Jarvis servers will appear.")
                 .setNegativeButton("Cancel") { _, _ -> generation.incrementAndGet() }
                 .setOnCancelListener { generation.incrementAndGet() }
                 .create().also { it.show() }
@@ -367,6 +438,23 @@ class MainActivity : Activity() {
                     }
                 }
             }
+            if (ipTargets.isNotEmpty() && generation.get() == id) {
+                val additional = ipScanner.scan(
+                    vpn, ipTargets,
+                    cancelled = { generation.get() != id || finder.activeVpn() != vpn },
+                    progress = { completed, total ->
+                        runOnUiThread {
+                            if (generation.get() == id && !isFinishing && !isDestroyed) {
+                                searchProgress?.setMessage(
+                                    "Checked $completed of $total Tailscale IPs. " +
+                                        "Verifying HTTPS certificates and full Jarvis identity…"
+                                )
+                            }
+                        }
+                    }
+                )
+                matched.addAll(additional)
+            }
             runOnUiThread {
                 if (generation.get() != id || finder.activeVpn() == null ||
                     isFinishing || isDestroyed) return@runOnUiThread
@@ -389,17 +477,19 @@ class MainActivity : Activity() {
         nodes.removeAllViews()
         val options = JarvisNodePicker.choices(observed)
         if (options.isEmpty()) {
-            status.text = "No verified Jarvis nodes found. Check MagicDNS, Serve, and saved hosts."
+            status.text = "No real Jarvis servers verified in the scanned IPs or saved hosts."
             if (showPicker) AlertDialog.Builder(this)
                 .setTitle("No verified Jarvis nodes")
-                .setMessage("None of your known nodes responded with a valid Jarvis identity. " +
-                    "Check Tailscale or manually enter a Jarvis MagicDNS hostname.")
+                .setMessage("No scanned address returned a verified FULL Jarvis service. " +
+                    "Check the IP range, Tailscale ACLs, MagicDNS reverse records, " +
+                    "and HTTPS Serve. The synthetic demo will not appear here.")
                 .setPositiveButton("OK", null).show()
             return
         }
         status.text = "Found ${options.size} verified node(s). Select one to fill the host field."
         options.forEach { node ->
-            nodes.addView(button("Select ${node.host} · Jarvis ${node.version}") {
+            nodes.addView(button("Select ${node.host} · Jarvis ${node.version}" +
+                (node.address?.let { " · $it" } ?: "")) {
                 chooseNode(node.host)
             })
             nodes.addView(button("Open verified Jarvis · ${node.host}") {
@@ -407,7 +497,10 @@ class MainActivity : Activity() {
             })
         }
         if (showPicker) {
-            val items = options.map { "${it.host}  ·  Jarvis ${it.version}" }.toTypedArray()
+            val items = options.map {
+                "${it.host}  ·  Jarvis ${it.version}" +
+                    (it.address?.let { address -> " · $address" } ?: "")
+            }.toTypedArray()
             AlertDialog.Builder(this)
                 .setTitle("Select a verified Jarvis")
                 .setItems(items) { _, position ->
