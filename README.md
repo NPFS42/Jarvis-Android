@@ -6,11 +6,17 @@
 **Windows frontend:** [NPFS42/Jarvis-Windows](https://github.com/NPFS42/Jarvis-Windows).
 **License:** AGPL-3.0-only, for project-owned frontend code (see LICENSE). Android and Gradle upstream components retain their licenses.
 
+## Download (preview)
+
+**Latest NPFS-signed Android APK — v0.1.1:** [Download directly](downloads/JarvisTailnet-v0.1.1-npfs-release.apk). The Jarvis backend is **not** included. For reviewer access to the synthetic demo, see the permanent [NPFS42 Demo Access page](DEMO_ACCESS.md). The invitation is published on that page and can be rotated without rebuilding the APK.
+
+The app's **Explore demo** button opens a connection-help dialog if the isolated demo cannot be reached, with a direct link to that page. **Search for Jarvis** presents a selectable list of independently verified nodes; selecting an item fills the editable hostname field and does not connect automatically.
+
 ## Features
 
 A native, minimal Android frontend for a Jarvis node running behind **Tailscale Serve**. It requires a connected VPN, exact `node.tailnet.ts.net` hostname, addresses within Tailscale ranges, normal TLS certificate verification and Jarvis's identity response. It neither scans local LANs nor uses public internet fallbacks. It requests same-tailnet peer suggestions only from an already-verified node, verifying all discovered endpoints independently. The approved node's existing full Jarvis UI loads within a restricted Android WebView. No Jarvis backend logic executes on the phone.
 
-The user's **Tailscale app and the private Jarvis server** are required; the Android app does not log in to Tailscale, create a new VPN, or provide a public cloud Jarvis service.
+The user's **Tailscale app and a private Jarvis server** are required to use real Jarvis functionality; the optional review demo uses only fictional sample data behind a separate Tailscale machine-share invitation. The Android app does not log in to Tailscale, create a VPN, or expose a public cloud Jarvis backend.
 
 ## Build
 
@@ -32,4 +38,4 @@ The current implementation is a **pre-release frontend**: a successfully signed 
 
 ## Status
 
-Android unit tests and CI builds have passed. The **NPFS LLC Google Play app draft** is created, and the Play Console listing, branding, privacy link and **two real Android emulator screenshots** are saved. The Google Play release is **not yet published**. The signed Play release bundle must still use the verified original NPFS/Kinetic Torch certificate (a prior locally signed STARS bundle is not the selected release identity). Outstanding gates include reusable **isolated reviewer access** to a test Jarvis node, Data safety and other declarations, physical Android/Tailscale acceptance testing, and release signing. See [PLAY_PUBLISHING.md](PLAY_PUBLISHING.md), [PLAY_REVIEW_ACCESS.md](PLAY_REVIEW_ACCESS.md), and [NPFS_SIGNING.md](NPFS_SIGNING.md). The main Jarvis AI repository remains private.
+Android unit tests and CI builds have passed. The **NPFS LLC Google Play app draft** is created, and the Play Console listing, branding, privacy link and **two real Android emulator screenshots** are saved. The Google Play release is **not yet published**. The preview APK and AAB are **signed with the verified original NPFS/Kinetic Torch certificate**; they have not been uploaded to Google Play. A dedicated reviewer-only demo tailnet exists, with a reusable share invitation on the public [Demo Access page](DEMO_ACCESS.md). Outstanding gates include independent reviewer-device acceptance, remaining Google Play Sign-in details/Target audience/Data safety submission and physical Android/Tailscale acceptance testing. See [PLAY_PUBLISHING.md](PLAY_PUBLISHING.md), [PLAY_REVIEW_ACCESS.md](PLAY_REVIEW_ACCESS.md), and [NPFS_SIGNING.md](NPFS_SIGNING.md). The main Jarvis AI repository remains private.
