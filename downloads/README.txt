@@ -1,13 +1,13 @@
 Jarvis Tailnet - NPFS-signed Android frontend preview
 
-Latest: v0.1.1 (versionCode 2)
+Latest: v0.1.2 (versionCode 3)
+APK: JarvisTailnet-v0.1.2-npfs-release.apk
+SHA-256: ABD35CE10ED88399674653D685376E7B48437979C831300DA61D6D73581BBBF9
 
-APK: JarvisTailnet-v0.1.1-npfs-release.apk
-SHA-256: 0CCA5E69EDB24E8379734B89FEA8CF8E3611E70BEE7EAC0AA945B7BBB0C3A847
+New: targeted Tailscale IP discovery via exposed VPN routes or user-supplied IPs and /24-/32 ranges. Only verified FULL Jarvis TLS identities appear in the selectable node list.
 
-Includes: NPFS42 demo connection dialog linking to the permanent invitation page; selectable verified-node list that fills the hostname field.
+Documentation: https://github.com/NPFS42/Jarvis-Android/blob/main/TAILNET_IP_DISCOVERY.md
+Demo invitation: https://github.com/NPFS42/Jarvis-Android/blob/main/DEMO_ACCESS.md
 
-Demo access: https://github.com/NPFS42/Jarvis-Android/blob/main/DEMO_ACCESS.md
-The private Jarvis backend is not included. Tailscale account is required for the machine share. Not yet published through Google Play.
-
-Previous v0.1.0 APK remains available for rollback.
+No private backend or signing keystore included. Not yet published through Google Play.
+Previous APKs remain available for rollback.
