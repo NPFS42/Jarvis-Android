@@ -1,0 +1,1 @@
+Jarvis Tailnet v0.1.0 preview — NPFS-signed APK. Standalone Android frontend; private Jarvis backend is not included. Optional synthetic demo requires Tailscale access. Not yet published on Google Play. SHA-256: 5D1D11CAED790560834BD40EA0B330701FD2D2D5903173462FDF776D5EA23EA1
