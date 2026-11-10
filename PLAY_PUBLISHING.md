@@ -7,9 +7,9 @@
 The **NPFS LLC** Play Console app draft **Jarvis Tailnet** exists at:
 https://play.google.com/console/u/0/developers/7720069378457039794/app/4976343341847982841/app-dashboard
 
-Completed in the Play draft: privacy policy URL, No ads, non-government app, Productivity category, business contact and website, English store listing (name, descriptions, icon, feature graphic), and two **genuine Android emulator screenshots**. The Play Console dashboard shows **5 of 11 app-information tasks completed**. The two screenshots show offline onboarding and its connection-guide dialog; they are not falsely represented as a working live Jarvis server.
+Completed in the Play draft: privacy policy URL, No ads, non-government app, Productivity category, business contact and website, English store listing (name, descriptions, icon, feature graphic), and two **genuine Android emulator screenshots**. The Play Console dashboard shows **8 of 11 app-information tasks completed**. The two screenshots show offline onboarding and its connection-guide dialog; they are not falsely represented as a working live Jarvis server.
 
-The draft is **not submitted, in testing, or production-published**. Play reviewer access is a blocker: the client requires a private Tailscale network and no separate synthetic test environment or reviewer credentials are yet configured. See [PLAY_REVIEW_ACCESS.md](PLAY_REVIEW_ACCESS.md). Data safety, target age groups, IARC ratings, health/financial declarations, physical-phone/Tailscale tests, and final NPFS release signing remain pending.
+The draft is **not submitted, in testing, or production-published**. Remaining Play information tasks are **Sign in details**, **Target audience**, and **Data safety**. Target audience is blocked by Sign in details; Data safety is filled out and saved at **Step 5 (Preview)**, but final Save is disabled pending target-audience completion. Content rating, financial features and health declarations are complete. A reusable machine-share invitation was created privately for the dedicated synthetic demo, but external reviewer access has not been independently accepted or tested. Physical-device acceptance remains pending.
 
 ## Status — completed
 
@@ -17,8 +17,8 @@ The draft is **not submitted, in testing, or production-published**. Play review
 - Target API 36, min API 29 (Android 10+), first version code 1 and version 0.1.0.
 - Android release build, unit tests and Android Lint passed on Windows JDK 21.
 - **Requested release identity:** the existing Kinetic Torch / NPFS upload certificate, SHA-256 `7C:46:5F:47:14:1B:69:5D:0D:5D:E3:64:85:40:9F:D0:55:EA:92:A7:F1:8C:04:EE:95:F7:DB:2F:A4:75:FA:F2`, verified against Kinetic Torch's signed release bundle on the authorized shop PC.
-- **NPFS signing is pending:** the existing keystore must be used by its owner on a trusted machine; the unsigned Jarvis release AAB and APK have been built and tested. An earlier locally signed **STARS** Jarvis bundle is a different certificate and must **not** be submitted or described as NPFS-signed.
-- Signing credentials and the original keystore remain outside this public GitHub repository. **An upload key is NOT the app-signing key managed by Google Play.**
+- **NPFS signing COMPLETE:** signed Jarvis release AAB and APK were successfully built on the authorized shop PC with the **original Kinetic Torch/NPFS certificate** and verified against the expected SHA-256 fingerprint. Release tests and build passed. The AAB SHA-256 is `05DCA375492D3850C8182C841B54F2B59D37A5F5B43C2D11D040A1936BDCCBBD` and the APK SHA-256 is `5D1D11CAED790560834BD40EA0B330701FD2D2D5903173462FDF776D5EA23EA1`. Private local output: `C:\\Users\\User\\Documents\\JarvisAndroid-Signing\\private\\npfs-signed`. Neither was uploaded to Google Play or public GitHub. The earlier STARS-signed build has a different identity.
+- Signing credentials and the original keystore remain outside this public GitHub repository. An independent encrypted keystore backup on the home PC remains unverified. **An upload key is NOT the app-signing key managed by Google Play.**
 - Release build has an empty bootstrap hostname. No personal tailnet host, Tailscale credentials, keys, models or conversations are packaged.
 
 ## Build another signed bundle
@@ -30,6 +30,10 @@ On the owner's trusted development machine, provide the **same existing NPFS/Kin
 ```
 
 Output: `app/build/outputs/bundle/release/app-release.aab`. Verify bundle signing using `jarsigner -verify -verbose -certs <file>.aab`; verify APK signatures with `apksigner verify --print-certs`. Back up the upload key and its recovery instructions to **independent, owner-controlled encrypted storage** before enrolling in Play App Signing. Do not publish or upload the private keystore, password or encrypted DPAPI blob.
+
+## Data safety draft (not yet submitted)
+
+Saved at Step 5 with five optional data types: **Email address, User IDs, Other in-app messages, Files and docs, Other user-generated content**. All are disclosed for app functionality, with no advertising/analytics purpose or third-party sharing. The preview confirms encrypted transfer and the public [data deletion/request page](DELETE_DATA.md). Final submission remains blocked by the target-age declaration, which is blocked by truthful reviewer Sign-in details.
 
 ## Required before Play submission
 
