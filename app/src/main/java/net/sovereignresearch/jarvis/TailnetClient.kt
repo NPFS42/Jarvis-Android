@@ -76,6 +76,23 @@ class TailnetClient(private val connectivity: ConnectivityManager) {
         }
     }
 
+    /** Synthetic-only demonstration; never marks the endpoint as a real Jarvis node. */
+    fun probeDemo(network: Network): Boolean {
+        return try {
+            val host = DemoEndpoint.HOST
+            val response = json(network, host, "/_jarvis/discover")
+            DemoEndpoint.accepts(
+                host = response.optString("host"),
+                service = response.optString("service"),
+                demo = response.optBoolean("demo", false),
+                synthetic = response.optBoolean("synthetic", false),
+                fullAccess = response.optBoolean("full_access", true)
+            )
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     fun peers(network: Network, verifiedHost: String): List<String> {
         return try {
             val response = json(network, verifiedHost, "/_jarvis/peers")

@@ -100,6 +100,11 @@ class MainActivity : Activity() {
         layout.addView(label("Sovereign AI · Tailscale only", 14f, muted))
         status = label("Checking Tailscale connection…", 15f)
         layout.addView(status)
+        // Demo Mode never accesses the user's production MagicDNS suffix.
+        // It uses a dedicated, separately authenticated Tailscale tailnet.
+        layout.addView(button("Explore demo · simulated Jarvis") { connectDemo() })
+        layout.addView(label("Demo requires Tailscale connected to the separate NPFS42 " +
+            "review network. Responses are simulated, not produced by a live AI.", 12f, muted))
         layout.addView(button("Search for Jarvis on my tailnet") { scan() })
 
         layout.addView(label("Add a known Jarvis node (MagicDNS only)", 14f, muted))
@@ -221,6 +226,32 @@ class MainActivity : Activity() {
         prefs.edit().putString("suffix", suffix).putStringSet("hosts", existing).apply()
     }
 
+    private fun connectDemo() {
+        val vpn = finder.activeVpn()
+        if (vpn == null) {
+            checkVpn()
+            status.text = "Demo requires Tailscale connected to the separate review tailnet."
+            return
+        }
+        if (webView != null) return
+        val id = generation.incrementAndGet()
+        status.text = "Checking isolated demo HTTPS and synthetic service identity…"
+        thread(name = "JarvisDemoVerify", isDaemon = true) {
+            val accepted = finder.probeDemo(vpn)
+            runOnUiThread {
+                if (generation.get() != id || finder.activeVpn() == null) return@runOnUiThread
+                if (accepted) {
+                    status.text = "Connected to verified synthetic Jarvis demo."
+                    openBrowser(DemoEndpoint.HOST, demo = true)
+                } else {
+                    status.text = "Demo unavailable. Connect Tailscale to the NPFS42 review " +
+                        "tailnet and ensure your account can reach the demo. " +
+                        "The real Jarvis connection was not changed."
+                }
+            }
+        }
+    }
+
     private fun scan() {
         val vpn = finder.activeVpn()
         if (vpn == null) {
@@ -305,9 +336,11 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun openBrowser(host: String) {
+    private fun openBrowser(host: String, demo: Boolean = false) {
         val vpn = finder.activeVpn() ?: run { checkVpn(); return }
-        if (TrustedHosts.normalize(host, currentSuffix()) != host) return
+        if (demo) {
+            if (host != DemoEndpoint.HOST) return
+        } else if (TrustedHosts.normalize(host, currentSuffix()) != host) return
         closeBrowser()
         if (!connectivity.bindProcessToNetwork(vpn)) {
             status.text = "Unable to bind Jarvis to the Tailscale VPN."
@@ -315,6 +348,10 @@ class MainActivity : Activity() {
         }
         currentHost = host
         val main = browserFrame.getChildAt(0) as LinearLayout
+        (main.getChildAt(0) as LinearLayout).let { top ->
+            (top.getChildAt(1) as TextView).text =
+                if (demo) "Jarvis · SYNTHETIC DEMO" else "Jarvis · Private tailnet"
+        }
         val view = WebView(this)
         WebView.setWebContentsDebuggingEnabled(false)
         view.settings.apply {
