@@ -1,6 +1,6 @@
 # Android demo mode — 2026-11-09
 
-The **Explore demo · simulated Jarvis** button deliberately connects to one hard-coded reviewer endpoint: `jarvis-review-demo.tail45ef0b.ts.net`. It cannot be changed from UI and cannot be used to browse arbitrary servers.
+The **Explore demo · simulated Jarvis** button deliberately connects to one hard-coded reviewer endpoint: `jarvis-review-demo.tail45ef0b.ts.net`. It cannot be changed from the UI and cannot be used to browse arbitrary servers. When the demo is unavailable, an Android dialog displays the NPFS42 network identity and links to the stable public [Demo Access page](DEMO_ACCESS.md), where the reusable invitation can be rotated without changing the APK.
 
 ## Security and separation
 
@@ -13,13 +13,14 @@ The **Explore demo · simulated Jarvis** button deliberately connects to one har
 
 ## Reviewer requirements still pending
 
-The demo is on the dedicated NPFS42 GitHub tailnet. Google Play reviewers are not yet enrolled or verified. A reusable Tailscale machine-share invitation must be created and kept valid over the review period, and reviewers must have their own usable Tailscale account. Tailscale sharing alone may not meet Google's requirement for reusable, globally available and MFA-free review credentials; confirm before submission and supply an alternative fully reviewable path if necessary.
+The demo is on the dedicated NPFS42 GitHub tailnet. Google Play reviewers are not yet enrolled or verified. A reusable Tailscale machine-share invitation is listed on the stable public [Demo Access page](DEMO_ACCESS.md). Its token is **not embedded in the APK**, and it can expire or be rotated independently. Reviewers must still have their own usable Tailscale account. Tailscale sharing alone may not meet Google's requirement for reusable, globally available and MFA-free review credentials; confirm before submission and supply an alternative fully reviewable path if necessary.
 
 Do **not** add Google's reviewers to production Jarvis or the original VPS tailnet.
 
 ## Checks
 
 - Both Android build variants compile and their unit tests pass, including demo identity positive and negative cases.
-- Android 17 emulator installed new debug APK, rendered the demo button and explanation, no crash. Emulator screenshot `play-assets/screenshots/03-demo-button.png`.
+- Android 17 emulator installed updated debug APK, rendered the demo button, and verified the **NPFS42 demo network** dialog and **Demo access page** action when no VPN was present, with no crash. Prior screenshot: `play-assets/screenshots/03-demo-button.png`.
+- **Search for Jarvis** now displays a list of independently verified nodes (saved hosts plus independently probed peer hints) and selecting one fills the main editable hostname field. Searching never automatically connects to the sole result. A search with no VPN or known nodes shows an explanatory dialog. Android does not provide a general authenticated Tailscale peer-list API to third-party apps, so a known hostname is still needed for initial discovery.
 - **Not yet verified on a real VPN-connected Android device.** The Android emulator intentionally has no Tailscale identity and thus shows the disconnected message.
 - VPS network and demo API independently passed HTTPS tests over the separate Tailscale network.

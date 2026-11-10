@@ -22,8 +22,8 @@ android {
         applicationId = "net.sovereignresearch.jarvis"
         minSdk = 29
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.1.1"
     }
     // Google Play builds never contain a private tailnet hostname.
     // Only the personal debug APK may use a local.properties bootstrap.

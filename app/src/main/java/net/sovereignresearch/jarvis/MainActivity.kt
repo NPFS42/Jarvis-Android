@@ -2,6 +2,7 @@ package net.sovereignresearch.jarvis
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -16,6 +17,8 @@ import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.view.WindowInsets
+import android.window.OnBackInvokedCallback
+import android.window.OnBackInvokedDispatcher
 import android.webkit.CookieManager
 import android.webkit.SslErrorHandler
 import android.net.http.SslError
@@ -37,7 +40,8 @@ import kotlin.concurrent.thread
 /**
  * Native client; never owns Jarvis memory or credentials.
  * Remote access inherits Jarvis's browser token and the Tailscale Serve identity check.
- * No external links, LAN/IP fallback, arbitrary web browsing, or provider APIs.
+ * No LAN/IP fallback, arbitrary web browsing, or provider APIs.
+ * User-initiated help links launch the external Tailscale/Play/GitHub apps only.
  */
 class MainActivity : Activity() {
     private val appBackground = Color.rgb(7, 16, 24)
@@ -58,6 +62,8 @@ class MainActivity : Activity() {
     private val prefs by lazy { getSharedPreferences("trusted_jarvis_nodes", Context.MODE_PRIVATE) }
     private val observed = mutableListOf<TailnetClient.Node>()
     private var monitoring = false
+    private var searchProgress: AlertDialog? = null
+    private var modernBackCallback: OnBackInvokedCallback? = null
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onLost(network: Network) { runOnUiThread { checkVpn() } }
@@ -86,6 +92,16 @@ class MainActivity : Activity() {
         window.navigationBarColor = appBackground
         connectivity = getSystemService(ConnectivityManager::class.java)
         finder = TailnetClient(connectivity)
+        // Android 13+ and target SDK 36 use the system back dispatcher.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val callback = OnBackInvokedCallback {
+                if (webView != null) closeBrowser() else finish()
+            }
+            modernBackCallback = callback
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(
+                OnBackInvokedDispatcher.PRIORITY_DEFAULT, callback
+            )
+        }
 
         val root = FrameLayout(this).apply { setBackgroundColor(appBackground) }
         layout = LinearLayout(this).apply {
@@ -103,9 +119,9 @@ class MainActivity : Activity() {
         // Demo Mode never accesses the user's production MagicDNS suffix.
         // It uses a dedicated, separately authenticated Tailscale tailnet.
         layout.addView(button("Explore demo · simulated Jarvis") { connectDemo() })
-        layout.addView(label("Demo requires Tailscale connected to the separate NPFS42 " +
-            "review network. Responses are simulated, not produced by a live AI.", 12f, muted))
-        layout.addView(button("Search for Jarvis on my tailnet") { scan() })
+        layout.addView(label("NPFS42 synthetic demo · Tailscale access required. " +
+            "Tap Demo for connection details if it is not available.", 12f, muted))
+        layout.addView(button("Search for Jarvis on my tailnet") { scan(showPicker = true) })
 
         layout.addView(label("Add a known Jarvis node (MagicDNS only)", 14f, muted))
         candidateField = EditText(this).apply {
@@ -182,6 +198,14 @@ class MainActivity : Activity() {
             .show()
     }
 
+    override fun onPause() {
+        // Don't show a discovery dialog after the user switches away from Jarvis.
+        generation.incrementAndGet()
+        searchProgress?.dismiss()
+        searchProgress = null
+        super.onPause()
+    }
+
     override fun onResume() {
         super.onResume()
         if (!monitoring) {
@@ -189,12 +213,14 @@ class MainActivity : Activity() {
             monitoring = true
         }
         checkVpn()
-        if (finder.activeVpn() != null && webView == null) scan()
+        if (finder.activeVpn() != null && webView == null) scan(showPicker = false)
     }
 
     private fun checkVpn() {
         if (finder.activeVpn() == null) {
             generation.incrementAndGet()
+            searchProgress?.dismiss()
+            searchProgress = null
             closeBrowser()
             status.text = "Tailscale VPN is disconnected. Open Tailscale, sign in and connect."
             nodes.removeAllViews()
@@ -226,46 +252,101 @@ class MainActivity : Activity() {
         prefs.edit().putString("suffix", suffix).putStringSet("hosts", existing).apply()
     }
 
+    private fun openTailscale() {
+        // No embedded login or tokens. Delegate all Tailscale authentication to
+        // its official application and the user's own Android identity.
+        val installed = packageManager.getLaunchIntentForPackage("com.tailscale.ipn")
+        try {
+            startActivity(installed ?: Intent(Intent.ACTION_VIEW,
+                Uri.parse("https://play.google.com/store/apps/details?id=com.tailscale.ipn")))
+        } catch (_: ActivityNotFoundException) {
+            status.text = "Install Tailscale from the Play Store before connecting to the demo."
+        }
+    }
+
+    private fun openDemoAccessPage() {
+        // Stable public documentation link only; the actual reusable
+        // Tailscale invitation is published and rotated on that page.
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(DemoEndpoint.ACCESS_PAGE)))
+        } catch (_: ActivityNotFoundException) {
+            status.text = "Demo access page: ${DemoEndpoint.ACCESS_PAGE}"
+        }
+    }
+
+    private fun showDemoNetworkGuide(reason: String) {
+        if (isFinishing || isDestroyed) return
+        AlertDialog.Builder(this)
+            .setTitle("NPFS42 · Demo network")
+            .setMessage(DemoEndpoint.connectionInstructions(reason))
+            .setPositiveButton("Demo access page") { _, _ -> openDemoAccessPage() }
+            .setNeutralButton("Open Tailscale") { _, _ -> openTailscale() }
+            .setNegativeButton("Close", null)
+            .show()
+    }
+
     private fun connectDemo() {
+        if (webView != null) return
         val vpn = finder.activeVpn()
         if (vpn == null) {
             checkVpn()
-            status.text = "Demo requires Tailscale connected to the separate review tailnet."
+            status.text = "Tailscale not connected to the NPFS42 demo machine."
+            showDemoNetworkGuide("Tailscale is not currently connected.")
             return
         }
-        if (webView != null) return
         val id = generation.incrementAndGet()
-        status.text = "Checking isolated demo HTTPS and synthetic service identity…"
+        status.text = "Checking the NPFS42 demo server over your current Tailscale VPN…"
         thread(name = "JarvisDemoVerify", isDaemon = true) {
             val accepted = finder.probeDemo(vpn)
             runOnUiThread {
-                if (generation.get() != id || finder.activeVpn() == null) return@runOnUiThread
-                if (accepted) {
+                if (generation.get() != id || isFinishing || isDestroyed) return@runOnUiThread
+                if (accepted && finder.activeVpn() != null) {
                     status.text = "Connected to verified synthetic Jarvis demo."
                     openBrowser(DemoEndpoint.HOST, demo = true)
                 } else {
-                    status.text = "Demo unavailable. Connect Tailscale to the NPFS42 review " +
-                        "tailnet and ensure your account can reach the demo. " +
-                        "The real Jarvis connection was not changed."
+                    status.text = "Demo is not reachable or the NPFS42 device has not been shared."
+                    showDemoNetworkGuide(
+                        "The NPFS42 demo is not reachable on your current Tailscale connection."
+                    )
                 }
             }
         }
     }
 
-    private fun scan() {
+    private fun scan(showPicker: Boolean = false) {
+        if (webView != null) return
         val vpn = finder.activeVpn()
         if (vpn == null) {
             checkVpn()
+            if (showPicker) AlertDialog.Builder(this)
+                .setTitle("Search requires Tailscale")
+                .setMessage("Connect your Tailscale VPN first, then search for verified Jarvis nodes.")
+                .setPositiveButton("Open Tailscale") { _, _ -> openTailscale() }
+                .setNegativeButton("Close", null).show()
             return
         }
-        if (webView != null) return
         val id = generation.incrementAndGet()
         status.text = "Tailscale connected · Checking trusted Jarvis nodes…"
         nodes.removeAllViews()
         val hosts = saved().sorted()
         if (hosts.isEmpty()) {
-            status.text = "Tailscale connected. Add the hostname of one Jarvis node to discover your tailnet."
+            status.text = "No known Jarvis nodes yet. Enter a MagicDNS hostname and verify it first."
+            if (showPicker) AlertDialog.Builder(this)
+                .setTitle("No known Jarvis nodes")
+                .setMessage("Discovery checks saved trusted hosts and verified peer hints. " +
+                    "Enter one MagicDNS hostname in the main field and tap Verify and save " +
+                    "to establish a trusted starting point.")
+                .setPositiveButton("OK", null).show()
             return
+        }
+        if (showPicker) {
+            searchProgress?.dismiss()
+            searchProgress = AlertDialog.Builder(this)
+                .setTitle("Searching for Jarvis…")
+                .setMessage("Checking your known nodes and verifying their HTTPS Jarvis identities.")
+                .setNegativeButton("Cancel") { _, _ -> generation.incrementAndGet() }
+                .setOnCancelListener { generation.incrementAndGet() }
+                .create().also { it.show() }
         }
         thread(name = "JarvisTailnetScan", isDaemon = true) {
             val matched = mutableListOf<TailnetClient.Node>()
@@ -274,8 +355,8 @@ class MainActivity : Activity() {
                 checked.add(host)
                 finder.probe(vpn, host)?.let { matched.add(it) }
             }
-            // Once a real owner-authorized node responds, ask it for same-tailnet
-            // peer hints. Every hint still needs an independent HTTPS Jarvis proof.
+            // A verified Jarvis may suggest other same-tailnet nodes. Every
+            // suggestion still has to pass an independent HTTPS identity check.
             if (matched.isNotEmpty()) {
                 val suffix = TrustedHosts.suffix(matched.first().host)
                 val suggestions = finder.peers(vpn, matched.first().host)
@@ -287,26 +368,55 @@ class MainActivity : Activity() {
                 }
             }
             runOnUiThread {
-                if (generation.get() != id || finder.activeVpn() == null) return@runOnUiThread
+                if (generation.get() != id || finder.activeVpn() == null ||
+                    isFinishing || isDestroyed) return@runOnUiThread
+                searchProgress?.dismiss()
+                searchProgress = null
                 observed.clear()
-                observed.addAll(matched.distinctBy { it.host })
-                showResults()
+                observed.addAll(JarvisNodePicker.choices(matched))
+                showResults(showPicker)
             }
         }
     }
 
-    private fun showResults() {
+    private fun chooseNode(host: String) {
+        candidateField.setText(host)
+        candidateField.setSelection(host.length)
+        status.text = "Selected $host. Use Verify and save to keep it, or Open in the list to connect."
+    }
+
+    private fun showResults(showPicker: Boolean = false) {
         nodes.removeAllViews()
-        if (observed.isEmpty()) {
-            status.text = "No verified Jarvis found on your connected tailnet. Check MagicDNS, " +
-                "Tailscale Serve, and the node hostname."
+        val options = JarvisNodePicker.choices(observed)
+        if (options.isEmpty()) {
+            status.text = "No verified Jarvis nodes found. Check MagicDNS, Serve, and saved hosts."
+            if (showPicker) AlertDialog.Builder(this)
+                .setTitle("No verified Jarvis nodes")
+                .setMessage("None of your known nodes responded with a valid Jarvis identity. " +
+                    "Check Tailscale or manually enter a Jarvis MagicDNS hostname.")
+                .setPositiveButton("OK", null).show()
             return
         }
-        status.text = "Found ${observed.size} verified Jarvis node(s) on your tailnet."
-        observed.forEach { node ->
-            nodes.addView(button("${node.host}   ·   Jarvis ${node.version}") { openBrowser(node.host) })
+        status.text = "Found ${options.size} verified node(s). Select one to fill the host field."
+        options.forEach { node ->
+            nodes.addView(button("Select ${node.host} · Jarvis ${node.version}") {
+                chooseNode(node.host)
+            })
+            nodes.addView(button("Open verified Jarvis · ${node.host}") {
+                openBrowser(node.host)
+            })
         }
-        if (observed.size == 1) openBrowser(observed.first().host)
+        if (showPicker) {
+            val items = options.map { "${it.host}  ·  Jarvis ${it.version}" }.toTypedArray()
+            AlertDialog.Builder(this)
+                .setTitle("Select a verified Jarvis")
+                .setItems(items) { _, position ->
+                    JarvisNodePicker.selectedHost(options, position)?.let { chooseNode(it) }
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        }
+        // Never automatically connect on a single discovery result.
     }
 
     private fun addNode() {
@@ -327,10 +437,12 @@ class MainActivity : Activity() {
                     status.text = "Node rejected or unreachable over the Tailscale VPN."
                 } else {
                     persist(host)
-                    candidateField.setText("")
                     observed.clear()
                     observed.add(verified)
                     showResults()
+                    candidateField.setText(host)
+                    candidateField.setSelection(host.length)
+                    status.text = "Verified and saved $host. Select a node or tap Open in the list."
                 }
             }
         }
@@ -421,12 +533,17 @@ class MainActivity : Activity() {
         connectivity.bindProcessToNetwork(null)
     }
 
+    @SuppressLint("GestureBackNavigation") // Legacy back only; modern callback registered above.
     @Deprecated("Back navigation should return to the trusted-node picker")
     override fun onBackPressed() {
         if (webView != null) closeBrowser() else super.onBackPressed()
     }
 
     override fun onDestroy() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            modernBackCallback?.let { onBackInvokedDispatcher.unregisterOnBackInvokedCallback(it) }
+            modernBackCallback = null
+        }
         generation.incrementAndGet()
         closeBrowser()
         if (monitoring) connectivity.unregisterNetworkCallback(networkCallback)
