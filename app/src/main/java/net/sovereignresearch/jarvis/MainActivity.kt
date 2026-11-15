@@ -14,6 +14,8 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.view.View
 import android.view.WindowInsets
@@ -55,16 +57,29 @@ class MainActivity : Activity() {
     private lateinit var status: TextView
     private lateinit var nodes: LinearLayout
     private lateinit var candidateField: EditText
+    private lateinit var connectPanel: LinearLayout
+    private lateinit var presencePanel: LinearLayout
+    private lateinit var aboutPanel: LinearLayout
+    private lateinit var presenceInfo: TextView
     private lateinit var browserFrame: FrameLayout
     private lateinit var backButton: Button
     private var webView: WebView? = null
     private var currentHost: String? = null
+    private var verifiedVpn: Network? = null
     private val generation = AtomicInteger(0)
     private val prefs by lazy { getSharedPreferences("trusted_jarvis_nodes", Context.MODE_PRIVATE) }
+    private val presencePrefs by lazy { getSharedPreferences("jarvis_presence", Context.MODE_PRIVATE) }
     private val observed = mutableListOf<TailnetClient.Node>()
     private var monitoring = false
     private var searchProgress: AlertDialog? = null
     private var modernBackCallback: OnBackInvokedCallback? = null
+    private val uiHandler = Handler(Looper.getMainLooper())
+    private val presenceRefresh = object : Runnable {
+        override fun run() {
+            refreshPresence()
+            uiHandler.postDelayed(this, 15_000L)
+        }
+    }
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onLost(network: Network) { runOnUiThread { checkVpn() } }
@@ -86,6 +101,48 @@ class MainActivity : Activity() {
 
     private fun button(text: String, action: () -> Unit): Button =
         Button(this).apply { this.text = text; setOnClickListener { action() }; isAllCaps = false }
+
+    private fun showTab(screen: Int) {
+        connectPanel.visibility = if (screen == 0) View.VISIBLE else View.GONE
+        presencePanel.visibility = if (screen == 1) View.VISIBLE else View.GONE
+        aboutPanel.visibility = if (screen == 2) View.VISIBLE else View.GONE
+        if (screen == 1) refreshPresence()
+    }
+
+    private fun refreshPresence() {
+        if (!::presenceInfo.isInitialized) return
+        val resources = DeviceVitals.read(this)
+        val state = PresenceVitals(
+            vpnConnected = finder.activeVpn() != null,
+            verifiedNodeAvailable = observed.isNotEmpty(),
+            batteryPercent = resources.batteryPercent,
+            charging = resources.charging,
+            powerSaver = resources.powerSaver,
+            thermalStatus = resources.thermalStatus,
+            lowMemory = resources.lowMemory
+        )
+        val mode = PresenceMode.fromStored(presencePrefs.getString("mode", null))
+        val decision = PresencePolicy.assess(mode, state)
+        val temperatureState = when {
+            resources.thermalStatus >= 3 -> "High"
+            resources.thermalStatus == 2 -> "Moderate"
+            resources.thermalStatus == 1 -> "Light"
+            else -> "Normal"
+        }
+        presenceInfo.text = buildString {
+            append("Policy: ${mode.title}\n")
+            append("Eligibility: ${if (decision.ready) "READY" else "WAITING"}\n")
+            append("${decision.explanation}\n\n")
+            append("Tailnet: ${if (state.vpnConnected) "Connected" else "Disconnected"}\n")
+            append("Jarvis: ${if (state.verifiedNodeAvailable) "Verified this session" else "Not verified"}\n")
+            append("Battery: ${resources.batteryPercent?.let { "$it%" } ?: "Unknown"}")
+            append(if (resources.charging) " · Charging\n" else " · On battery\n")
+            append("Power Saver: ${if (resources.powerSaver) "On" else "Off"}\n")
+            append("Thermal pressure: $temperatureState\n")
+            append("Available RAM: ${resources.availableRamMb} / ${resources.totalRamMb} MB")
+        }
+        presenceInfo.setTextColor(if (decision.ready) accent else ink)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -118,16 +175,27 @@ class MainActivity : Activity() {
         layout.addView(label("Sovereign AI · Tailscale only", 14f, muted))
         status = label("Checking Tailscale connection…", 15f)
         layout.addView(status)
-        // Demo Mode never accesses the user's production MagicDNS suffix.
-        // It uses a dedicated, separately authenticated Tailscale tailnet.
-        layout.addView(button("Explore demo · simulated Jarvis") { connectDemo() })
-        layout.addView(label("NPFS42 synthetic demo · Tailscale access required. " +
-            "Tap Demo for connection details if it is not available.", 12f, muted))
-        layout.addView(button("Search Tailscale IPs for Jarvis") { showIpScanDialog() })
+        val tabs = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        fun addTab(title: String, screen: Int) {
+            tabs.addView(button(title) { showTab(screen) }.apply { textSize = 12f },
+                LinearLayout.LayoutParams(0, -2, 1f))
+        }
+        addTab("Connect", 0)
+        addTab("Presence", 1)
+        addTab("About", 2)
+        layout.addView(tabs)
+        connectPanel = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        presencePanel = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        aboutPanel = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        layout.addView(connectPanel)
+        layout.addView(presencePanel)
+        layout.addView(aboutPanel)
 
-        layout.addView(label("Verified servers use a MagicDNS hostname for HTTPS. " +
+        connectPanel.addView(label("Private Jarvis nodes", 18f, accent, true))
+        connectPanel.addView(button("Search Tailscale IPs for Jarvis") { showIpScanDialog() })
+        connectPanel.addView(label("Verified servers use a MagicDNS hostname for HTTPS. " +
             "IP search can find their names via Tailscale reverse DNS.", 12f, muted))
-        layout.addView(label("Add a known Jarvis node (MagicDNS only)", 14f, muted))
+        connectPanel.addView(label("Add a known Jarvis node (MagicDNS only)", 14f, muted))
         candidateField = EditText(this).apply {
             hint = "node.tailnet.ts.net"
             setSingleLine(true)
@@ -136,15 +204,40 @@ class MainActivity : Activity() {
             inputType = android.text.InputType.TYPE_CLASS_TEXT or
                 android.text.InputType.TYPE_TEXT_VARIATION_URI
         }
-        layout.addView(candidateField)
-        layout.addView(button("Verify and save this node") { addNode() })
-        layout.addView(label("Only verified FULL Jarvis identities over VPN HTTPS are accepted. " +
-            "IP scans find hostnames; actual connections require verified MagicDNS and TLS. " +
-            "No public/LAN addresses or cloud fallback.", 13f, muted))
+        connectPanel.addView(candidateField)
+        connectPanel.addView(button("Verify and save this node") { addNode() })
+        connectPanel.addView(label("Connections require verified MagicDNS, TLS and a FULL Jarvis " +
+            "identity. No public/LAN addresses or cloud fallback.", 13f, muted))
+        nodes = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        connectPanel.addView(nodes)
+
+        presencePanel.addView(label("Jarvis presence on this device", 18f, accent, true))
+        presencePanel.addView(label("Choose how this phone may contribute when a compatible " +
+            "Jarvis worker becomes available. Paused is the default.", 14f, muted))
+        val modes = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        PresenceMode.entries.forEach { mode ->
+            modes.addView(button(mode.title) {
+                presencePrefs.edit().putString("mode", mode.name).apply()
+                refreshPresence()
+            })
+        }
+        presencePanel.addView(modes)
+        presenceInfo = label("Checking local resources…", 14f)
+        presencePanel.addView(presenceInfo)
+        presencePanel.addView(label("Not yet a background worker: no persistent service, " +
+            "NPU inference, device telemetry upload or remote task execution is enabled. " +
+            "These settings only prepare a local workload policy.", 13f, muted))
+
+        aboutPanel.addView(label("About Jarvis for Android", 18f, accent, true))
+        // Demo Mode never accesses the user's production MagicDNS suffix.
+        // It uses a dedicated, separately authenticated Tailscale tailnet.
+        aboutPanel.addView(button("Explore demo · simulated Jarvis") { connectDemo() })
+        aboutPanel.addView(label("NPFS42 synthetic demo · Tailscale access required. " +
+            "Tap Demo for connection details if it is not available.", 12f, muted))
         // Google Play requires a privacy-policy link inside the application.
         // It opens the user's separate browser on deliberate tap only; Jarvis
         // discovery and the embedded Jarvis WebView remain tailnet-only.
-        layout.addView(button("Privacy policy (opens browser)") {
+        aboutPanel.addView(button("Privacy policy (opens browser)") {
             try {
                 startActivity(Intent(Intent.ACTION_VIEW,
                     Uri.parse("https://github.com/NPFS42/Jarvis-Android/blob/main/PRIVACY.md")))
@@ -154,10 +247,8 @@ class MainActivity : Activity() {
         })
         // A real, offline-readable setup guide also gives app reviewers an
         // honest explanation without exposing the owner's private Jarvis server.
-        layout.addView(button("Connection guide") { showConnectionGuide() })
-
-        nodes = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        layout.addView(nodes)
+        aboutPanel.addView(button("Connection guide") { showConnectionGuide() })
+        showTab(0)
 
         browserFrame = FrameLayout(this).apply {
             setBackgroundColor(appBackground)
@@ -205,6 +296,7 @@ class MainActivity : Activity() {
 
     override fun onPause() {
         // Don't show a discovery dialog after the user switches away from Jarvis.
+        uiHandler.removeCallbacks(presenceRefresh)
         generation.incrementAndGet()
         searchProgress?.dismiss()
         searchProgress = null
@@ -219,19 +311,27 @@ class MainActivity : Activity() {
         }
         checkVpn()
         if (finder.activeVpn() != null && webView == null) scan(showPicker = false)
+        uiHandler.removeCallbacks(presenceRefresh)
+        uiHandler.post(presenceRefresh)
     }
 
     private fun checkVpn() {
-        if (finder.activeVpn() == null) {
+        val vpn = finder.activeVpn()
+        if (vpn != verifiedVpn) {
+            // Never carry a verified-node result into a different VPN session.
+            verifiedVpn = vpn
             generation.incrementAndGet()
             searchProgress?.dismiss()
             searchProgress = null
             closeBrowser()
-            status.text = "Tailscale VPN is disconnected. Open Tailscale, sign in and connect."
             nodes.removeAllViews()
             observed.clear()
             connectivity.bindProcessToNetwork(null)
         }
+        if (vpn == null) {
+            status.text = "Tailscale VPN is disconnected. Open Tailscale, sign in and connect."
+        }
+        refreshPresence()
     }
 
     private fun currentSuffix(): String? {
@@ -399,6 +499,8 @@ class MainActivity : Activity() {
         val id = generation.incrementAndGet()
         status.text = "Tailscale connected · Checking trusted hosts and available IP targets…"
         nodes.removeAllViews()
+        observed.clear()
+        refreshPresence()
         val hosts = saved().sorted()
         if (hosts.isEmpty() && ipTargets.isEmpty()) {
             status.text = "No known Jarvis nodes yet. Enter a MagicDNS hostname and verify it first."
@@ -463,6 +565,7 @@ class MainActivity : Activity() {
                 observed.clear()
                 observed.addAll(JarvisNodePicker.choices(matched))
                 showResults(showPicker)
+                refreshPresence()
             }
         }
     }
@@ -478,6 +581,7 @@ class MainActivity : Activity() {
         val options = JarvisNodePicker.choices(observed)
         if (options.isEmpty()) {
             status.text = "No real Jarvis servers verified in the scanned IPs or saved hosts."
+            refreshPresence()
             if (showPicker) AlertDialog.Builder(this)
                 .setTitle("No verified Jarvis nodes")
                 .setMessage("No scanned address returned a verified FULL Jarvis service. " +
@@ -487,6 +591,7 @@ class MainActivity : Activity() {
             return
         }
         status.text = "Found ${options.size} verified node(s). Select one to fill the host field."
+        refreshPresence()
         options.forEach { node ->
             nodes.addView(button("Select ${node.host} · Jarvis ${node.version}" +
                 (node.address?.let { " · $it" } ?: "")) {
@@ -522,6 +627,9 @@ class MainActivity : Activity() {
         }
         status.text = "Verifying HTTPS and Jarvis identity for $host…"
         val id = generation.incrementAndGet()
+        observed.clear()
+        nodes.removeAllViews()
+        refreshPresence()
         thread(name = "JarvisVerifyNode", isDaemon = true) {
             val verified = finder.probe(vpn, host)
             runOnUiThread {
@@ -633,6 +741,7 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        uiHandler.removeCallbacks(presenceRefresh)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             modernBackCallback?.let { onBackInvokedDispatcher.unregisterOnBackInvokedCallback(it) }
             modernBackCallback = null
