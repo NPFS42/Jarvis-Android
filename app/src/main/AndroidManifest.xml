@@ -7,7 +7,7 @@
         android:allowBackup="false"
         android:fullBackupContent="false"
         android:usesCleartextTraffic="false"
-        android:label="Jarvis · Tailnet"
+        android:label="${appLabel}"
         android:icon="@drawable/ic_jarvis"
         android:theme="@style/AppTheme"
         android:supportsRtl="true">

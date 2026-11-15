@@ -10,6 +10,7 @@ Status: **v0.1.3-dev source only; no worker service or NPU inference yet.** The 
 - Eligibility is false when paused, VPN is absent, no FULL Jarvis node was verified in the current VPN session, battery is missing or below 25%, Battery Saver is on, Android reports low memory, or thermal pressure reaches `THERMAL_STATUS_MODERATE` (or higher). **Charging only** also requires external power.
 - When the active VPN `Network` changes, verified-node results are cleared and the WebView closes. A recheck is required before the phone can be marked eligible again.
 - No device metrics are transmitted; no background service, model download, TPU access, scheduler integration or task execution is started by selecting a mode.
+- Debug builds use a distinct `.dev` application ID and visible DEV label. This allows side-by-side testing without replacing or deleting data from the NPFS-signed release.
 
 ## Next integration work (not yet implemented)
 
