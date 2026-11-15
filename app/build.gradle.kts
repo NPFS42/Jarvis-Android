@@ -22,8 +22,9 @@ android {
         applicationId = "net.sovereignresearch.jarvis"
         minSdk = 29
         targetSdk = 36
-        versionCode = 3
-        versionName = "0.1.2"
+        versionCode = 4
+        versionName = "0.1.3-dev"
+        manifestPlaceholders["appLabel"] = "Jarvis · Tailnet"
     }
     // Google Play builds never contain a private tailnet hostname.
     // Only the personal debug APK may use a local.properties bootstrap.
@@ -49,6 +50,9 @@ android {
     }
     buildTypes {
         getByName("debug") {
+            // A debug-signed APK must never replace an installed NPFS-signed release.
+            applicationIdSuffix = ".dev"
+            manifestPlaceholders["appLabel"] = "Jarvis · Tailnet DEV"
             buildConfigField("String", "DEFAULT_HOST", "\"$bootstrap\"")
         }
         getByName("release") {

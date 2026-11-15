@@ -13,6 +13,8 @@ Jarvis for Android is an interface to a separate, self-hosted Jarvis instance, a
 
 **App developer collection and sharing.** Outside the optional developer-operated demo, the frontend does not automatically upload user conversations or documents to NPFS. The app does not embed advertising SDKs, analytics SDKs, or third-party tracking SDKs, and user data is not sold. Tailscale is a separately installed network application with its own privacy policy and account controls; the Android app neither manages nor uploads credentials to Tailscale.
 
+**Local device readiness (v0.1.3 development).** The optional Presence tab displays battery level and charging state, Battery Saver, Android thermal-pressure category, and available/total RAM. It stores only the user's participation preference (Paused, Balanced, or Charging only) in private on-device preferences. These readings are not uploaded, recorded in analytics, or shared with Jarvis. No device-worker registration, always-on monitoring, background inference or NPU access is implemented in this version.
+
 **Permissions.** Android Internet and network-state permissions are required for private HTTPS connection and VPN verification. No location, camera, microphone, phone identifiers, Bluetooth or contacts permissions are requested. The app does not scan LANs or public internet IP ranges. User-initiated discovery is strictly limited to Tailscale's private CGNAT range on the connected VPN.
 
 **Security.** The app refuses public internet or LAN fallback and requires a connected VPN, Tailscale address-range checks, a valid TLS certificate, and a Jarvis identity response. The chosen server's own access policies control authorization. A device owner controls which Tailscale networks and servers to trust.

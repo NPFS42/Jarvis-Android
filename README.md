@@ -14,6 +14,12 @@ The app's **Explore demo** button opens a connection-help dialog if the isolated
 
 ## Features
 
+### Development branch: native presence preparation (v0.1.3-dev)
+
+The native screen is organized into **Connect**, **Presence**, and **About** tabs. The new Presence panel reads battery level, charging, power-saver state, Android thermal pressure and available RAM **on-device** and shows whether the device passes a locally configured workload policy. The three choices are **Paused** (default), **Balanced**, and **Charging only**. When the VPN disconnects or changes, node verification is invalidated.
+
+This is **preparation for** a future distributed Jarvis worker, not a functioning background inference service. The app does not yet register the device with Jarvis, accept tasks, use a TPU/NPU, synchronize memories, or transmit resource readings. No new permissions or persistent background service have been added. Development debug builds use the separate `.dev` app ID, allowing side-by-side testing without replacing an NPFS-signed app. The latest NPFS-signed installable release remains v0.1.2. See [presence development and acceptance](PRESENCE.md).
+
 A native, minimal Android frontend for a Jarvis node running behind **Tailscale Serve**. It requires a connected VPN, exact `node.tailnet.ts.net` hostname, addresses within Tailscale ranges, normal TLS certificate verification and Jarvis's identity response. It neither scans local LANs nor uses public internet fallbacks. It can discover verified real Jarvis nodes from saved MagicDNS names, independently verified peer hints and bounded user-initiated Tailscale IP scans. The phone cannot enumerate Tailscale's full 4-million-address range without an authorized peer-list source; a /24 or smaller range is supported. The approved node's existing full Jarvis UI loads within a restricted Android WebView. No Jarvis backend logic executes on the phone.
 
 The user's **Tailscale app and a private Jarvis server** are required to use real Jarvis functionality; the optional review demo uses only fictional sample data behind a separate Tailscale machine-share invitation. The Android app does not log in to Tailscale, create a VPN, or expose a public cloud Jarvis backend.
