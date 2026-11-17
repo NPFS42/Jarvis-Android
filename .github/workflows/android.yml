@@ -44,5 +44,5 @@ jobs:
         with:
           name: Jarvis-Android-unsigned-debug
           path: app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 14
+          retention-days: 3
           if-no-files-found: error
