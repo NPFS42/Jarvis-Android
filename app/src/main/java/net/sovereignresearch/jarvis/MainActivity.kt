@@ -570,7 +570,8 @@ class MainActivity : Activity() {
             cacheMode = WebSettings.LOAD_NO_CACHE
             safeBrowsingEnabled = false   // No vendor/cloud reputation lookups
         }
-        view.isLongClickable = false
+        // Keep Android's native long-press text selection and Copy/Paste available.
+        view.isLongClickable = true
         view.webViewClient = object : WebViewClient() {
             private fun allowed(url: String): Boolean {
                 val uri = android.net.Uri.parse(url)
